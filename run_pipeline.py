@@ -1,11 +1,15 @@
 import argparse
 import csv
+import os
 import re
+import time
 import traceback
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from pdf2image import convert_from_path
+import pandas as pd
+from pdf2image import convert_from_path, pdfinfo_from_path
 
 from preprocess_pages import preprocess_image
 from layout import analyze_layout
@@ -15,8 +19,8 @@ from reporting import save_outputs
 from utils import ensure_dir
 
 
-from config import POPPLER_PATH as POPLER_PATH
-DPI = 200
+from config import (POPPLER_PATH as POPLER_PATH, RENDER_DPI as DPI, BINARIZE, TESSDATA_DIR, OCR_LANG,
+                    SAVE_RAW_PAGES, SAVE_LAYOUT_DEBUG, RENDER_CHUNK, WORKERS)
 FMT = "png"
 
 
@@ -31,26 +35,33 @@ def find_pdfs(input_dir: Path):
     return sorted([p for p in input_dir.rglob("*") if p.suffix.lower() == ".pdf"])
 
 
-def render_pdf_to_manifest(pdf_path: Path, output_dir: Path):
-    pages_raw_dir = ensure_dir(output_dir / "pages_raw")
-    pages = convert_from_path(
-        pdf_path,
-        dpi=DPI,
-        fmt=FMT,
-        thread_count=2,
-        poppler_path=POPLER_PATH,
-    )
+def iter_pdf_pages(pdf_path: Path, output_dir: Path):
+    """Рендерит PDF порциями по RENDER_CHUNK страниц и отдаёт (строка манифеста, картинка).
 
-    manifest = []
-    for idx, img in enumerate(pages, start=1):
-        page_path = pages_raw_dir / f"page_{idx:04d}.{FMT}"
-        img.save(page_path)
-        manifest.append({
-            "page_id": idx,
-            "source": str(pdf_path.resolve()),
-            "image_path": str(page_path.resolve()),
-        })
-    return manifest
+    В памяти одновременно не больше RENDER_CHUNK страниц, поэтому размер отчёта
+    не важен. Исходный рендер сохраняется на диск, только если SAVE_RAW_PAGES = True.
+    """
+    n_pages = int(pdfinfo_from_path(str(pdf_path), poppler_path=POPLER_PATH)["Pages"])
+    pages_raw_dir = ensure_dir(output_dir / "pages_raw") if SAVE_RAW_PAGES else None
+
+    for first in range(1, n_pages + 1, RENDER_CHUNK):
+        last = min(first + RENDER_CHUNK - 1, n_pages)
+        images = convert_from_path(
+            pdf_path,
+            dpi=DPI,
+            fmt=FMT,
+            first_page=first,
+            last_page=last,
+            poppler_path=POPLER_PATH,
+        )
+        for idx, img in enumerate(images, start=first):
+            page_path = ""
+            if pages_raw_dir:
+                page_path = pages_raw_dir / f"page_{idx:04d}.{FMT}"
+                img.save(page_path)
+                page_path = str(page_path.resolve())
+            yield {"page_id": idx, "source": str(pdf_path.resolve()), "image_path": page_path}, img
+        del images
 
 
 def aggregate_entity_frequencies(all_entity_rows, output_csv: Path):
@@ -73,23 +84,23 @@ def aggregate_entity_frequencies(all_entity_rows, output_csv: Path):
 def process_one_pdf(pdf_path: Path, output_dir: Path):
     output_dir = ensure_dir(output_dir)
     processed_dir = ensure_dir(output_dir / "processed_pages")
-    debug_dir = ensure_dir(output_dir / "layout_debug")
+    debug_dir = ensure_dir(output_dir / "layout_debug") if SAVE_LAYOUT_DEBUG else None
     ocr_dir = ensure_dir(output_dir / "ocr_text")
 
-    manifest = render_pdf_to_manifest(pdf_path, output_dir)
-
+    manifest = []
     page_rows = []
     entity_rows = []
     texts = []
 
-    for row in manifest:
+    for row, img in iter_pdf_pages(pdf_path, output_dir):
+        manifest.append(row)
         page_id = row["page_id"]
-        image_path = Path(row["image_path"])
         processed_path = processed_dir / f"page_{page_id:04d}.png"
-        debug_path = debug_dir / f"page_{page_id:04d}.png"
+        debug_path = debug_dir / f"page_{page_id:04d}.png" if debug_dir else None
         ocr_base = ocr_dir / f"page_{page_id:04d}"
 
-        pre = preprocess_image(image_path, processed_path)
+        pre = preprocess_image(img, processed_path)
+        img.close()
         lay = analyze_layout(processed_path, debug_path)
         ocr = run_tesseract(processed_path, ocr_base)
 
@@ -125,10 +136,37 @@ def process_one_pdf(pdf_path: Path, output_dir: Path):
         "pages": len(page_rows),
         "entities": len(entity_rows),
         "ocr_pages": sum(1 for r in page_rows if r.get("ocr_available")),
-        "page_rows": page_rows,
         "entity_rows": entity_rows,
-        "stats": stats,
     }
+
+
+def init_worker():
+    # Несколько процессов Tesseract с OpenMP-потоками мешают друг другу;
+    # при параллельной обработке отчётов каждый Tesseract работает в один поток.
+    os.environ["OMP_THREAD_LIMIT"] = "1"
+
+
+def run_job(pdf_path: Path, doc_output_dir: Path):
+    """Обработка одного отчёта в отдельном процессе. Исключения возвращаются, а не теряются."""
+    t0 = time.time()
+    try:
+        result = process_one_pdf(pdf_path, doc_output_dir)
+        result["status"] = "success"
+    except Exception as e:
+        result = {"status": "failed", "error": str(e), "traceback": traceback.format_exc(), "entity_rows": []}
+    result["seconds"] = round(time.time() - t0, 1)
+    return result
+
+
+def load_entities(doc_output_dir: Path):
+    """Сущности уже обработанного отчёта — чтобы общая частотная таблица была полной при --skip-existing."""
+    path = doc_output_dir / "entities.csv"
+    if not path.exists() or path.stat().st_size == 0:
+        return []
+    try:
+        return pd.read_csv(path, usecols=["type", "text"], dtype=str).fillna("").to_dict("records")
+    except (ValueError, pd.errors.EmptyDataError):
+        return []
 
 
 def main():
@@ -136,7 +174,9 @@ def main():
     ap.add_argument("--input", default="input_reports", help="Folder with PDF files")
     ap.add_argument("--output", default="results", help="Output root directory")
     ap.add_argument("--skip-existing", action="store_true", help="Skip PDFs that already have report.md")
+    ap.add_argument("--workers", type=int, default=WORKERS, help=f"Reports processed in parallel (default {WORKERS})")
     args = ap.parse_args()
+    workers = max(1, args.workers)
 
     input_dir = Path(args.input)
     output_root = ensure_dir(args.output)
@@ -173,32 +213,43 @@ def main():
     print(f"Input directory: {input_dir}")
     print(f"Output directory: {output_root}")
     print(f"Using Poppler: {POPLER_PATH}")
+    model = Path(TESSDATA_DIR) / f"{OCR_LANG}.traineddata"
+    print(f"Render: {DPI} dpi, binarize: {BINARIZE}")
+    print(f"OCR model: {model if model.exists() else 'installed with Tesseract (tessdata_best not found)'}")
+    print(f"Workers: {workers}, render chunk: {RENDER_CHUNK} pages, "
+          f"save raw pages: {SAVE_RAW_PAGES}, save layout debug: {SAVE_LAYOUT_DEBUG}")
 
-    for idx, pdf_path in enumerate(pdf_files, start=1):
-        doc_name = safe_name(pdf_path.name)
-        doc_output_dir = output_root / doc_name
-        report_md = doc_output_dir / "report.md"
-
-        if args.skip_existing and report_md.exists():
-            print(f"[{idx}/{len(pdf_files)}] SKIP {pdf_path.name} -> already processed")
+    jobs = []
+    for pdf_path in pdf_files:
+        doc_output_dir = output_root / safe_name(pdf_path.name)
+        if args.skip_existing and (doc_output_dir / "report.md").exists():
+            ents = load_entities(doc_output_dir)
+            all_entity_rows.extend(ents)
+            try:
+                pa = pd.read_csv(doc_output_dir / "page_analysis.csv", usecols=["ocr_available"])
+                pages, ocr_pages = len(pa), int(pa["ocr_available"].astype(str).eq("True").sum())
+            except (OSError, ValueError, pd.errors.EmptyDataError):
+                pages, ocr_pages = "", ""
             summary_rows.append({
                 "pdf_name": pdf_path.name,
                 "pdf_path": str(pdf_path.resolve()),
                 "status": "skipped",
-                "pages": "",
-                "ocr_pages": "",
-                "entities": "",
+                "pages": pages,
+                "ocr_pages": ocr_pages,
+                "entities": len(ents),
                 "output_dir": str(doc_output_dir.resolve()),
                 "message": "report.md already exists",
             })
-            continue
+        else:
+            jobs.append((pdf_path, doc_output_dir))
 
-        print(f"\n[{idx}/{len(pdf_files)}] PROCESSING: {pdf_path.name}")
+    print(f"Skipped (already processed): {len(summary_rows)}, to process: {len(jobs)}")
+    # Крупные отчёты — первыми, чтобы в конце не ждать один большой файл
+    jobs.sort(key=lambda j: j[0].stat().st_size, reverse=True)
 
-        try:
-            result = process_one_pdf(pdf_path, doc_output_dir)
+    def record(pdf_path, doc_output_dir, result, done):
+        if result["status"] == "success":
             all_entity_rows.extend(result["entity_rows"])
-
             summary_rows.append({
                 "pdf_name": pdf_path.name,
                 "pdf_path": str(pdf_path.resolve()),
@@ -209,16 +260,9 @@ def main():
                 "output_dir": str(doc_output_dir.resolve()),
                 "message": "",
             })
-
-            print(
-                f"  OK: pages={result['pages']}, "
-                f"ocr_pages={result['ocr_pages']}, "
-                f"entities={result['entities']}"
-            )
-
-        except Exception as e:
-            tb = traceback.format_exc()
-
+            print(f"[{done}/{len(jobs)}] OK {pdf_path.name}: pages={result['pages']}, "
+                  f"entities={result['entities']}, {result['seconds']} s")
+        else:
             summary_rows.append({
                 "pdf_name": pdf_path.name,
                 "pdf_path": str(pdf_path.resolve()),
@@ -227,18 +271,35 @@ def main():
                 "ocr_pages": "",
                 "entities": "",
                 "output_dir": str(doc_output_dir.resolve()),
-                "message": str(e),
+                "message": result["error"],
             })
-
             error_rows.append({
                 "pdf_name": pdf_path.name,
                 "pdf_path": str(pdf_path.resolve()),
-                "error": str(e),
-                "traceback": tb,
+                "error": result["error"],
+                "traceback": result["traceback"],
             })
+            print(f"[{done}/{len(jobs)}] ERROR {pdf_path.name}: {result['error']}")
 
-            print(f"  ERROR: {e}")
+    t_start = time.time()
+    if workers == 1:
+        for done, (pdf_path, doc_output_dir) in enumerate(jobs, start=1):
+            print(f"[{done}/{len(jobs)}] PROCESSING: {pdf_path.name}")
+            record(pdf_path, doc_output_dir, run_job(pdf_path, doc_output_dir), done)
+    elif jobs:
+        with ProcessPoolExecutor(max_workers=workers, initializer=init_worker) as pool:
+            futures = {pool.submit(run_job, p, d): (p, d) for p, d in jobs}
+            for done, fut in enumerate(as_completed(futures), start=1):
+                pdf_path, doc_output_dir = futures[fut]
+                try:
+                    result = fut.result()
+                except Exception as e:  # процесс упал целиком, например из-за нехватки памяти
+                    result = {"status": "failed", "error": f"worker crashed: {e}",
+                              "traceback": traceback.format_exc()}
+                record(pdf_path, doc_output_dir, result, done)
+    print(f"Processing time: {round((time.time() - t_start) / 60, 1)} min")
 
+    summary_rows.sort(key=lambda r: r["pdf_name"])
     with open(batch_summary_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,

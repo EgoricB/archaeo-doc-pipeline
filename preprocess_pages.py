@@ -6,6 +6,8 @@ from PIL import Image, ImageOps, ImageFilter
 from skimage.filters import threshold_otsu
 from skimage.transform import rotate
 
+from config import BINARIZE
+
 
 PAGES_DIR = Path("pages")
 PROCESSED_DIR = Path("processed_pages")
@@ -63,14 +65,24 @@ def estimate_skew_angle(gray: Image.Image) -> float:
     return float(best_angle)
 
 
-def preprocess_image(image_path: Path, output_path: Path):
-    img = Image.open(image_path)
+def preprocess_image(image_path, output_path: Path, binarize: bool = BINARIZE):
+    """Оттенки серого, медианный фильтр, выравнивание наклона и (по желанию) бинаризация Оцу.
+
+    image_path — путь к файлу или уже открытая картинка PIL (чтобы не сохранять рендер на диск).
+
+    По умолчанию бинаризация выключена: на бледной машинописи она стирает
+    тонкие штрихи и ухудшает OCR (см. experiments/ocr_tuning).
+    """
+    img = image_path if isinstance(image_path, Image.Image) else Image.open(image_path)
     img = ImageOps.exif_transpose(img).convert("RGB")
 
     gray = pil_to_gray(img)
     gray = gray.filter(ImageFilter.MedianFilter(size=3))
 
-    angle = estimate_skew_angle(gray)
+    # Угол ищем на уменьшенной копии: результат тот же, а на 300 dpi это в разы быстрее
+    small = gray.copy()
+    small.thumbnail((1000, 1000))
+    angle = estimate_skew_angle(small)
 
     deskewed = gray.rotate(
         angle,
@@ -80,9 +92,11 @@ def preprocess_image(image_path: Path, output_path: Path):
 
     arr = np.array(deskewed)
     thr = threshold_otsu(arr)
-    bw = (arr > thr).astype(np.uint8) * 255
 
-    out = Image.fromarray(bw)
+    if binarize:
+        out = Image.fromarray((arr > thr).astype(np.uint8) * 255)
+    else:
+        out = deskewed
 
     ensure_dir(output_path.parent)
     out.save(output_path)

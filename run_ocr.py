@@ -7,9 +7,7 @@ INPUT_MANIFEST = Path("processed_pages_manifest.csv")
 OCR_TEXT_DIR = Path("ocr_text")
 OCR_MANIFEST_PATH = Path("ocr_manifest.csv")
 
-from config import TESSERACT_EXE
-OCR_LANG = "rus"
-PSM = "3"
+from config import TESSERACT_EXE, TESSDATA_DIR, OCR_LANG, OCR_PSM as PSM
 
 
 def ensure_dir(path: Path):
@@ -35,6 +33,8 @@ def run_tesseract(image_path: Path, out_base: Path, lang: str = OCR_LANG, psm: s
         "--psm",
         psm,
     ]
+    if (Path(TESSDATA_DIR) / f"{lang}.traineddata").exists():
+        cmd += ["--tessdata-dir", str(TESSDATA_DIR)]
 
     res = subprocess.run(
         cmd,

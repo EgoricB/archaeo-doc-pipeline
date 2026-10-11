@@ -1,11 +1,14 @@
 import numpy as np
 from PIL import Image, ImageDraw
+from skimage.filters import threshold_otsu
 
 
 def analyze_layout(image_path, debug_path=None):
     img = Image.open(image_path).convert('L')
     arr = np.array(img)
-    ink = arr < 200
+    # Порог «чернил»: для бинарной картинки совпадает с прежним arr < 200,
+    # для серой отделяет текст от фона бумаги
+    ink = arr < min(200, threshold_otsu(arr))
     h, w = arr.shape
 
     row_density = ink.mean(axis=1)
