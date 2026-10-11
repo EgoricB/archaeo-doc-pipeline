@@ -1,0 +1,7 @@
+pandas
+numpy
+Pillow
+scikit-image
+requests
+pdf2image
+matplotlib

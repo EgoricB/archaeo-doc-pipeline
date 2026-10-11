@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <title>Digital Archive of Archaeological Reports</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A research-driven digital project for OCR, structuring, and analysis of archaeological fieldwork reports based on the archive of the Institute of Archaeology RAS.">
+  <!-- Fonts -->
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&f[]=boska@400,500,700&display=swap" rel="stylesheet">
+  <style>
+    /* === Design tokens === */
+    :root, [data-theme="light"] {
+      --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+      --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+      --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+      --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+      --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
+      --text-2xl:  clamp(2rem,     1.2rem  + 2.5vw,  3.5rem);
+
+      --space-1:  0.25rem;
+      --space-2:  0.5rem;
+      --space-3:  0.75rem;
+      --space-4:  1rem;
+      --space-5:  1.25rem;
+      --space-6:  1.5rem;
+      --space-8:  2rem;
+      --space-10: 2.5rem;
+      --space-12: 3rem;
+      --space-16: 4rem;
+      --space-20: 5rem;
+      --space-24: 6rem;
+
+      --color-bg:             #f7f6f2;
+      --color-surface:        #f9f8f5;
+      --color-surface-2:      #fbfbf9;
+      --color-surface-offset: #f3f0ec;
+      --color-border:         #d4d1ca;
+      --color-divider:        #dcd9d5;
+
+      --color-text:           #28251d;
+      --color-text-muted:     #7a7974;
+      --color-text-faint:     #bab9b4;
+      --color-text-inverse:   #f9f8f4;
+
+      --color-primary:        #01696f;
+      --color-primary-hover:  #0c4e54;
+      --color-primary-active: #0f3638;
+      --color-primary-highlight: #cedcd8;
+
+      --color-success:        #437a22;
+      --color-error:          #a12c7b;
+
+      --radius-sm: 0.375rem;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06);
+      --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
+
+      --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+      --content-narrow: 640px;
+      --content-default: 960px;
+      --content-wide: 1200px;
+
+      --font-body: 'Satoshi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-display: 'Boska', 'Georgia', serif;
+    }
+
+    [data-theme="dark"] {
+      --color-bg:             #171614;
+      --color-surface:        #1c1b19;
+      --color-surface-2:      #201f1d;
+      --color-surface-offset: #1d1c1a;
+      --color-border:         #393836;
+      --color-divider:        #262523;
+      --color-text:           #cdccca;
+      --color-text-muted:     #797876;
+      --color-text-faint:     #5a5957;
+      --color-text-inverse:   #2b2a28;
+      --color-primary:        #4f98a3;
+      --color-primary-hover:  #227f8b;
+      --color-primary-active: #1a626b;
+      --color-primary-highlight: #313b3b;
+      --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+      --shadow-md: 0 4px 12px oklch(0 0 0 / 0.3);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      -moz-text-size-adjust: none;
+      -webkit-text-size-adjust: none;
+      text-size-adjust: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      scroll-behavior: smooth;
+      scroll-padding-top: var(--space-16);
+    }
+    body {
+      min-height: 100vh;
+      line-height: 1.6;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--color-text);
+      background-color: var(--color-bg);
+    }
+    img, svg { display: block; max-width: 100%; height: auto; }
+
+    a, button {
+      font: inherit;
+      color: inherit;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: color var(--transition-interactive),
+                  background var(--transition-interactive),
+                  border-color var(--transition-interactive),
+                  box-shadow var(--transition-interactive),
+                  transform var(--transition-interactive);
+    }
+    :focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 3px;
+      border-radius: var(--radius-sm);
+    }
+
+    .container {
+      max-width: var(--content-default);
+      margin-inline: auto;
+      padding-inline: var(--space-4);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(12px);
+      background: color-mix(in oklch, var(--color-bg) 88%, transparent);
+      border-bottom: 1px solid var(--color-divider);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-block: var(--space-3);
+      gap: var(--space-4);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      text-decoration: none;
+    }
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      background: radial-gradient(circle at 20% 20%, var(--color-primary) 0, var(--color-primary) 30%, var(--color-primary-highlight) 60%, transparent 100%);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-inverse);
+    }
+    .logo-mark span {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      font-size: var(--text-sm);
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--color-text-muted);
+    }
+    .nav-links a:hover {
+      color: var(--color-primary);
+    }
+
+    .theme-toggle {
+      border-radius: var(--radius-full);
+      padding: 0.4rem 0.7rem;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .theme-toggle span {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+    }
+
+    main {
+      padding-block: var(--space-8);
+    }
+
+    /* Hero */
+    .hero {
+      padding-block: clamp(var(--space-10), 10vw, var(--space-20));
+    }
+    .hero-grid {
+      display: grid;
+      gap: var(--space-8);
+    }
+    @media (min-width: 768px) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+        align-items: center;
+      }
+    }
+
+    .eyebrow {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-2);
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      line-height: 1.05;
+      margin-bottom: var(--space-4);
+    }
+    .hero-lead {
+      font-size: var(--text-lg);
+      color: var(--color-text-muted);
+      max-width: 42rem;
+      margin-bottom: var(--space-6);
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      align-items: center;
+    }
+    .btn-primary {
+      padding: 0.75rem 1.4rem;
+      border-radius: var(--radius-full);
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      box-shadow: var(--shadow-md);
+    }
+    .btn-primary:hover {
+      background: var(--color-primary-hover);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      padding: 0.75rem 1.2rem;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      background: color-mix(in oklch, var(--color-surface) 85%, transparent);
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+    .btn-ghost:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+    .hero-note {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+    }
+
+    .hero-panel {
+      background: radial-gradient(circle at 0 0, var(--color-primary-highlight), var(--color-surface-2));
+      border-radius: var(--radius-xl);
+      padding: var(--space-4);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--color-border);
+    }
+    .hero-panel h2 {
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-3);
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+    .metric-label {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      letter-spacing: 0.12em;
+      margin-bottom: 0.2rem;
+    }
+    .metric-value {
+      font-size: var(--text-xl);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-desc {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      margin-top: 0.15rem;
+    }
+    .hero-panel-foot {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      border-top: 1px dashed var(--color-divider);
+      padding-top: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    /* Sections */
+    section {
+      padding-block: clamp(var(--space-10), 8vw, var(--space-20));
+      border-top: 1px solid var(--color-divider);
+    }
+    section:first-of-type {
+      border-top: none;
+    }
+    .section-header {
+      max-width: var(--content-narrow);
+      margin-bottom: var(--space-6);
+    }
+    .section-kicker {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-2);
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      margin-bottom: var(--space-2);
+    }
+    .section-lead {
+      color: var(--color-text-muted);
+      font-size: var(--text-base);
+    }
+
+    .two-column {
+      display: grid;
+      gap: var(--space-6);
+    }
+    @media (min-width: 768px) {
+      .two-column {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+      }
+    }
+
+    .card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+    .card h3 {
+      font-size: var(--text-lg);
+      margin-bottom: var(--space-2);
+    }
+    .card p {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      padding: 0.25rem 0.75rem;
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      background: var(--color-surface-2);
+    }
+
+    .list {
+      display: grid;
+      gap: var(--space-3);
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+
+    .timeline {
+      border-left: 1px solid var(--color-divider);
+      padding-left: var(--space-4);
+      display: grid;
+      gap: var(--space-4);
+      margin-top: var(--space-3);
+    }
+    .timeline-item {
+      position: relative;
+      padding-left: var(--space-2);
+    }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: calc(-1 * var(--space-4) - 4px);
+      top: 0.3rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary-highlight) 70%, transparent);
+    }
+    .timeline-label {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-text-muted);
+      margin-bottom: 0.1rem;
+    }
+    .timeline-title {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      margin-bottom: 0.15rem;
+    }
+    .timeline-desc {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: var(--space-2);
+    }
+
+    .badge {
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-2);
+      padding: 0.2rem 0.6rem;
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+    }
+
+    .grid-3 {
+      display: grid;
+      gap: var(--space-4);
+    }
+    @media (min-width: 960px) {
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    .highlight {
+      border-left: 3px solid var(--color-primary);
+      padding-left: var(--space-3);
+    }
+
+    footer {
+      border-top: 1px solid var(--color-divider);
+      padding-block: var(--space-4);
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+    }
+    footer a {
+      color: var(--color-text-muted);
+      text-decoration: none;
+    }
+    footer a:hover {
+      color: var(--color-primary);
+      text-decoration: underline;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border-width: 0;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="sr-only">Skip to content</a>
+
+  <header>
+    <div class="container">
+      <div class="nav">
+        <a href="#top" class="brand">
+          <div class="logo-mark" aria-hidden="true"><span>DA</span></div>
+          <div class="brand-text">
+            <span class="brand-title">Digital Archive</span>
+            <span class="brand-sub">Archaeological Reports</span>
+          </div>
+        </a>
+        <nav class="nav-links" aria-label="Main">
+          <a href="#about">About</a>
+          <a href="#pipeline">Pipeline</a>
+          <a href="#plans">Plans</a>
+          <a href="#results">Findings</a>
+          <a href="#future">Next phase</a>
+          <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
+            <span>Light</span>
+            <span aria-hidden="true">◑</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Research prototype</div>
+          <h1 class="hero-title">Digital Archive of Archaeological Reports</h1>
+          <p class="hero-lead">
+            A research‑driven digital project for OCR, structuring, and analysis of archaeological fieldwork reports
+            based on the scientific archive of the Institute of Archaeology RAS.
+          </p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="#results">Explore current dataset</a>
+            <a class="btn-ghost" href="#about">Read methodology</a>
+            <div class="hero-note">
+              MVP: OCR + entity extraction on a sample corpus of archival reports.<br>
+              CV‑based page classification and multimodal analysis — next steps.
+            </div>
+          </div>
+        </div>
+        <aside class="hero-panel" aria-label="Current project snapshot">
+          <h2>Snapshot · MVP stage</h2>
+          <div class="metrics">
+            <div>
+              <div class="metric-label">Processed pages</div>
+              <div class="metric-value">404</div>
+              <div class="metric-desc">Images passed through OCR &amp; structural analysis pipeline.</div>
+            </div>
+            <div>
+              <div class="metric-label">Archival reports</div>
+              <div class="metric-value">12</div>
+              <div class="metric-desc">Sample of fieldwork reports from the archive of IA RAS.</div>
+            </div>
+            <div>
+              <div class="metric-label">Extracted entities</div>
+              <div class="metric-value">683</div>
+              <div class="metric-desc">Places, periods, expeditions &amp; other domain‑specific mentions.</div>
+            </div>
+            <div>
+              <div class="metric-label">Pipeline errors</div>
+              <div class="metric-value" style="color:var(--color-success);">0</div>
+              <div class="metric-desc">End‑to‑end automated run on the current corpus.</div>
+            </div>
+          </div>
+          <div class="hero-panel-foot">
+            <span>
+              Source corpus: scientific archive of the Institute of Archaeology RAS, fieldwork reports
+              published in the institutional electronic catalog and open‑access selections.
+            </span>
+            <span>
+              This site presents a research prototype and does not replace official archival interfaces.
+            </span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="container">
+        <div class="two-column">
+          <div>
+            <div class="section-header">
+              <div class="section-kicker">Corpus &amp; context</div>
+              <h2 class="section-title">Archaeological reports as a complex archival source</h2>
+              <p class="section-lead">
+                Fieldwork reports stored in the scientific archive of the Institute of Archaeology RAS form a unique
+                corpus of primary archaeological documentation: survey descriptions, excavation diaries, plans,
+                photographs and analytical summaries.
+              </p>
+            </div>
+            <div class="list">
+              <p>
+                For decades this corpus has been accessible mainly via reading rooms and printed or PDF‑based
+                catalogs, with limited possibilities for full‑text search, cross‑report querying or computational
+                analysis.
+              </p>
+              <p>
+                The goal of this project is not to build yet another catalog, but to demonstrate how OCR,
+                structured outputs and entity‑level datasets can turn archival reports into a digitally legible
+                research resource.
+              </p>
+            </div>
+          </div>
+          <aside>
+            <div class="card">
+              <div class="pill">Archive focus · IA RAS</div>
+              <h3>Scientific archive, fieldwork report series</h3>
+              <p>
+                The pilot corpus is based on a small selection of fieldwork reports from the scientific archive of
+                the Institute of Archaeology RAS, including volumes published through the institutional electronic
+                catalog of archival reports.
+              </p>
+              <ul class="tags" aria-label="Current focus">
+                <li class="badge">Fieldwork documentation</li>
+                <li class="badge">PDF reports &amp; scans</li>
+                <li class="badge">Russian‑language corpus</li>
+                <li class="badge">Mid‑20th c. onwards</li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- New section: Plans and drawings -->
+    <section id="plans">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Visual archive</div>
+          <h2 class="section-title">Plans, sections and maps</h2>
+          <p class="section-lead">
+            Archaeological field reports rarely consist of text alone. Plans, sections, profiles and topographic maps
+            form a parallel visual archive that records the layout, stratigraphy and wider landscape context of
+            excavated sites.
+          </p>
+        </div>
+
+        <div class="two-column">
+          <div>
+            <div class="card">
+              <h3>Why plans matter</h3>
+              <p>
+                In excavation practice, plans and sections are not illustrations but analytical documents. They fix the
+                geometry of trenches, the boundaries of contexts and the relationships between features at specific
+                scales and orientations.
+              </p>
+              <p style="margin-top:var(--space-3);">
+                In the current MVP these pages are identified heuristically: by page‑type, low OCR text density and
+                the presence of keywords such as “план”, “разрез”, “схема” or “карта” in captions. This already allows
+                us to estimate how many visual pages each report contains and how narrative text and drawings are
+                distributed across the corpus.
+              </p>
+            </div>
+          </div>
+
+          <aside>
+            <div class="card">
+              <div class="pill">Examples from reports</div>
+              <div class="list">
+                <figure>
+                  <img src="img/plans/plan_example_01.jpg" alt="Example of an excavation plan page from a fieldwork report">
+                  <figcaption class="hero-note" style="margin-top:0.4rem;">
+                    Excavation plan: grid of squares with numbered contexts and a scale bar.
+                  </figcaption>
+                </figure>
+                <figure style="margin-top:var(--space-4);">
+                  <img src="img/plans/plan_example_02.jpg" alt="Example of a site or topographic map page from a fieldwork report">
+                  <figcaption class="hero-note" style="margin-top:0.4rem;">
+                    Site or topographic map showing the wider setting of the excavation area.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="card" style="margin-top:var(--space-6);">
+          <div class="highlight">
+            <p style="font-size:var(--text-sm); color:var(--color-text-muted);">
+              The next phase of the project aims to treat plans and drawings as first‑class objects: enriching each
+              image with additional metadata about its type, scale, orientation and content using computer vision and
+              deep learning, while keeping the underlying archival context visible.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- End new section -->
+
+    <section id="pipeline">
+      <div class="container">
+        <div class="two-column">
+          <div>
+            <div class="section-header">
+              <div class="section-kicker">Methodology</div>
+              <h2 class="section-title">From scanned pages to structured datasets</h2>
+              <p class="section-lead">
+                The current MVP focuses on building a transparent, reproducible pipeline for end‑to‑end processing:
+                from raw scanned pages to OCR text, page‑level metadata and research‑ready CSV files.
+              </p>
+            </div>
+            <div class="timeline" aria-label="Processing pipeline">
+              <div class="timeline-item">
+                <div class="timeline-label">Step 1</div>
+                <div class="timeline-title">Ingest &amp; page manifest</div>
+                <div class="timeline-desc">
+                  Reports are split into individual image pages; a manifest tracks report IDs, page numbers and basic
+                  technical metadata.
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-label">Step 2</div>
+                <div class="timeline-title">OCR &amp; page‑type analysis</div>
+                <div class="timeline-desc">
+                  OCR is applied to all pages; simple heuristics distinguish dense text pages, mixed layouts,
+                  figures/tables and image‑heavy pages for later CV‑based refinement.
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-label">Step 3</div>
+                <div class="timeline-title">Report‑level aggregation</div>
+                <div class="timeline-desc">
+                  Per‑report statistics summarise page counts, OCR coverage and the distribution of page types,
+                  providing a compact overview of each archival file.
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-label">Step 4</div>
+                <div class="timeline-title">Entity extraction &amp; corpus analytics</div>
+                <div class="timeline-desc">
+                  Domain‑specific entities (toponyms, periods, expedition codes, institutions) are extracted into a
+                  separate CSV, enabling queries across the sample corpus.
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside>
+            <div class="card">
+              <div class="pill">Outputs · CSV &amp; JSON</div>
+              <h3>What the pipeline produces</h3>
+              <ul class="list">
+                <li><strong>processed_pages_manifest.csv</strong> — one row per page with IDs, report links and basic metadata.</li>
+                <li><strong>ocr_manifest.csv</strong> — OCR coverage and quality indicators per page.</li>
+                <li><strong>report_stats.csv</strong> — report‑level counts of pages, types and OCR text volume.</li>
+                <li><strong>entities.csv</strong> — 683 entity rows extracted from 12 reports in the current MVP.</li>
+                <li><strong>corpus_stats.json</strong> — aggregate statistics for the whole sample corpus.</li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-kicker">Current findings</div>
+          <h2 class="section-title">What the MVP already reveals</h2>
+          <p class="section-lead">
+            Even a modest sample of 12 archival reports becomes much more legible once pages, OCR text and entities
+            are formalised into structured datasets.
+          </p>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Page‑level visibility</h3>
+            <p>
+              With 404 pages tracked individually, we can inspect the internal structure of reports: how many pages
+              carry dense narrative text, how often plans, tables or photo plates appear, and where OCR remains
+              fragile.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Entity‑rich landscape</h3>
+            <p>
+              683 extracted entities already form a miniature archaeological gazetteer: sites, regions, periods,
+              expeditions and institutions that could be linked to external authority files in future iterations.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Bridging archives and computation</h3>
+            <p>
+              The project demonstrates how archival fieldwork reports can be treated simultaneously as historical
+              sources and as structured data, without collapsing their narrative and visual richness into a single
+              index field.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:var(--space-6);">
+          <div class="highlight">
+            <p style="font-size:var(--text-sm); color:var(--color-text-muted);">
+              This is a research prototype that works on a small, well‑documented sample. Scaling to the full
+              archival corpus will require careful discussion of legal, ethical and institutional conditions — and
+              close collaboration with the archive itself.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="future">
+      <div class="container">
+        <div class="two-column">
+          <div>
+            <div class="section-header">
+              <div class="section-kicker">Next phase</div>
+              <h2 class="section-title">Towards multimodal, CV‑aware analysis</h2>
+              <p class="section-lead">
+                The next phase of the project moves from heuristics to machine learning: computer‑vision models for
+                page classification, multimodal representations of reports and richer interfaces for researchers.
+              </p>
+            </div>
+            <div class="list">
+              <p>
+                Conceptually, this means treating each report as a multimodal object that combines textual narrative,
+                tabular data, plans, drawings and photographs — and exploring models that can “read” such objects
+                beyond plain OCR.
+              </p>
+              <p>
+                For humanities audiences, the aim is to keep the interface legible and the workflow transparent: every
+                automated step should be inspectable, every dataset downloadable, every decision grounded in
+                disciplinary reasoning.
+              </p>
+            </div>
+          </div>
+          <aside>
+            <div class="card">
+              <div class="pill">Roadmap</div>
+              <h3>Planned 

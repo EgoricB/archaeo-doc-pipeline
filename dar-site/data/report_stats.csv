@@ -1,0 +1,13 @@
+report_id,report_text_path,page_count,char_count,word_count,quality_label,clean_token_count,unique_terms
+0001_Р-1_№ 2,C:\Users\User\Desktop\Проект\ocr_reports\0001_Р-1_№ 2.txt,23,15232,2482,usable,1531,1006
+0002_Р-1_№ 3,C:\Users\User\Desktop\Проект\ocr_reports\0002_Р-1_№ 3.txt,18,21518,3438,usable,2272,1379
+0003_Р-1_№ 4,C:\Users\User\Desktop\Проект\ocr_reports\0003_Р-1_№ 4.txt,168,315561,53161,usable,32248,24123
+0004_Р-1_№ 5,C:\Users\User\Desktop\Проект\ocr_reports\0004_Р-1_№ 5.txt,60,41789,6718,usable,4396,3551
+0005_Р-1_№ 6,C:\Users\User\Desktop\Проект\ocr_reports\0005_Р-1_№ 6.txt,8,4206,715,usable,411,392
+0006_Р-1_№ 7,C:\Users\User\Desktop\Проект\ocr_reports\0006_Р-1_№ 7.txt,19,4937,968,usable,530,499
+0007_Р-1_№ 8,C:\Users\User\Desktop\Проект\ocr_reports\0007_Р-1_№ 8.txt,16,22117,3507,usable,2352,1930
+0008_Р-1_№ 9,C:\Users\User\Desktop\Проект\ocr_reports\0008_Р-1_№ 9.txt,19,19166,2735,usable,1953,1687
+0009_Р-1_№ 10,C:\Users\User\Desktop\Проект\ocr_reports\0009_Р-1_№ 10.txt,16,9731,1499,usable,1052,953
+0010_Р-1_№ 11,C:\Users\User\Desktop\Проект\ocr_reports\0010_Р-1_№ 11.txt,19,12739,2117,usable,1352,1202
+0011_Р-1_№ 12,C:\Users\User\Desktop\Проект\ocr_reports\0011_Р-1_№ 12.txt,19,18179,2824,usable,1887,1682
+0013_Р-1_№ 14,C:\Users\User\Desktop\Проект\ocr_reports\0013_Р-1_№ 14.txt,19,19608,3375,usable,1916,1781

@@ -1,0 +1,31 @@
+# Окружение и служебные файлы
+.venv/
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+.env
+
+# Внешние программы (ставятся отдельно, см. README)
+tools/
+
+# Исходные отчёты ИА РАН (скачиваются скриптом download_from_list.py)
+input_reports/
+*.pdf
+
+# Результаты обработки: изображения страниц и OCR-тексты
+results/
+pages/
+processed_pages/
+ocr_text/
+ocr_reports/
+*.png
+*.jpg
+
+# Промежуточные таблицы (пересоздаются скриптами)
+*.csv
+!dar-site/data/*.csv
+
+# Отладка
+page_debug.html
+*.log
