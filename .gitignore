@@ -29,3 +29,4 @@ ocr_reports/
 # Отладка
 page_debug.html
 *.log
+!reports_catalog.csv
