@@ -25,6 +25,10 @@ ocr_reports/
 # Промежуточные таблицы (пересоздаются скриптами)
 *.csv
 !dar-site/data/*.csv
+!experiments/*/*.csv
+
+# Рабочие файлы экспериментов: картинки, OCR-тексты, модели
+experiments/*/work/
 
 # Отладка
 page_debug.html
