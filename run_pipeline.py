@@ -15,8 +15,7 @@ from reporting import save_outputs
 from utils import ensure_dir
 
 
-from config import POPPLER_PATH as POPLER_PATH
-DPI = 200
+from config import POPPLER_PATH as POPLER_PATH, RENDER_DPI as DPI, BINARIZE, TESSDATA_DIR, OCR_LANG
 FMT = "png"
 
 
@@ -173,6 +172,9 @@ def main():
     print(f"Input directory: {input_dir}")
     print(f"Output directory: {output_root}")
     print(f"Using Poppler: {POPLER_PATH}")
+    model = Path(TESSDATA_DIR) / f"{OCR_LANG}.traineddata"
+    print(f"Render: {DPI} dpi, binarize: {BINARIZE}")
+    print(f"OCR model: {model if model.exists() else 'installed with Tesseract (tessdata_best not found)'}")
 
     for idx, pdf_path in enumerate(pdf_files, start=1):
         doc_name = safe_name(pdf_path.name)
