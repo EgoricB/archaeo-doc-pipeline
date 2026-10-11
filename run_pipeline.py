@@ -9,7 +9,12 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
+from PIL import Image
 from pdf2image import convert_from_path, pdfinfo_from_path
+
+# Размер страниц ограничен MAX_PAGE_PIXELS (см. page_dpis), поэтому защита Pillow
+# от «декомпрессионных бомб» здесь не нужна и только выдаёт ложные предупреждения.
+Image.MAX_IMAGE_PIXELS = None
 
 from preprocess_pages import preprocess_image
 from layout import analyze_layout
@@ -20,7 +25,7 @@ from utils import ensure_dir
 
 
 from config import (POPPLER_PATH as POPLER_PATH, RENDER_DPI as DPI, BINARIZE, TESSDATA_DIR, OCR_LANG,
-                    SAVE_RAW_PAGES, SAVE_LAYOUT_DEBUG, RENDER_CHUNK, WORKERS)
+                    SAVE_RAW_PAGES, SAVE_LAYOUT_DEBUG, RENDER_CHUNK, WORKERS, MAX_PAGE_PIXELS)
 FMT = "png"
 
 
@@ -35,6 +40,22 @@ def find_pdfs(input_dir: Path):
     return sorted([p for p in input_dir.rglob("*") if p.suffix.lower() == ".pdf"])
 
 
+def page_dpis(pdf_path: Path, n_pages: int):
+    """dpi для каждой страницы: RENDER_DPI, а для больших листов — меньше, чтобы не превысить MAX_PAGE_PIXELS."""
+    info = pdfinfo_from_path(str(pdf_path), poppler_path=POPLER_PATH, first_page=1, last_page=n_pages)
+    dpis = []
+    for i in range(1, n_pages + 1):
+        size = info.get(f"Page {i:>4} size") or (info.get("Page size") if i == 1 else None)
+        m = re.match(r"\s*([\d.]+)\s*x\s*([\d.]+)", size or "")
+        dpi = DPI
+        if m:
+            w_in, h_in = float(m.group(1)) / 72, float(m.group(2)) / 72
+            if w_in * h_in * DPI * DPI > MAX_PAGE_PIXELS:
+                dpi = max(50, int((MAX_PAGE_PIXELS / (w_in * h_in)) ** 0.5))
+        dpis.append(dpi)
+    return dpis
+
+
 def iter_pdf_pages(pdf_path: Path, output_dir: Path):
     """Рендерит PDF порциями по RENDER_CHUNK страниц и отдаёт (строка манифеста, картинка).
 
@@ -42,13 +63,19 @@ def iter_pdf_pages(pdf_path: Path, output_dir: Path):
     не важен. Исходный рендер сохраняется на диск, только если SAVE_RAW_PAGES = True.
     """
     n_pages = int(pdfinfo_from_path(str(pdf_path), poppler_path=POPLER_PATH)["Pages"])
+    dpis = page_dpis(pdf_path, n_pages)
     pages_raw_dir = ensure_dir(output_dir / "pages_raw") if SAVE_RAW_PAGES else None
 
-    for first in range(1, n_pages + 1, RENDER_CHUNK):
-        last = min(first + RENDER_CHUNK - 1, n_pages)
+    first = 1
+    while first <= n_pages:
+        # Порция — подряд идущие страницы с одинаковым dpi, не больше RENDER_CHUNK
+        dpi = dpis[first - 1]
+        last = first
+        while last < n_pages and last - first + 1 < RENDER_CHUNK and dpis[last] == dpi:
+            last += 1
         images = convert_from_path(
             pdf_path,
-            dpi=DPI,
+            dpi=dpi,
             fmt=FMT,
             first_page=first,
             last_page=last,
@@ -60,8 +87,9 @@ def iter_pdf_pages(pdf_path: Path, output_dir: Path):
                 page_path = pages_raw_dir / f"page_{idx:04d}.{FMT}"
                 img.save(page_path)
                 page_path = str(page_path.resolve())
-            yield {"page_id": idx, "source": str(pdf_path.resolve()), "image_path": page_path}, img
+            yield {"page_id": idx, "source": str(pdf_path.resolve()), "image_path": page_path, "render_dpi": dpi}, img
         del images
+        first = last + 1
 
 
 def aggregate_entity_frequencies(all_entity_rows, output_csv: Path):
@@ -119,6 +147,7 @@ def process_one_pdf(pdf_path: Path, output_dir: Path):
             "page_id": page_id,
             "source": row["source"],
             "image_path": row["image_path"],
+            "render_dpi": row["render_dpi"],
             "source_pdf": str(pdf_path.resolve()),
             **pre,
             **lay,
@@ -216,6 +245,7 @@ def main():
     model = Path(TESSDATA_DIR) / f"{OCR_LANG}.traineddata"
     print(f"Render: {DPI} dpi, binarize: {BINARIZE}")
     print(f"OCR model: {model if model.exists() else 'installed with Tesseract (tessdata_best not found)'}")
+    print(f"Max page size: {MAX_PAGE_PIXELS / 1e6:.0f} Mpx (larger sheets are rendered at lower dpi)")
     print(f"Workers: {workers}, render chunk: {RENDER_CHUNK} pages, "
           f"save raw pages: {SAVE_RAW_PAGES}, save layout debug: {SAVE_LAYOUT_DEBUG}")
 
