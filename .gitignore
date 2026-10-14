@@ -26,6 +26,7 @@ ocr_reports/
 *.csv
 !dar-site/data/*.csv
 !experiments/*/*.csv
+!ground_truth/*.csv
 
 # Эксперименты: промежуточные файлы (картинки, тексты OCR, модели) и повторные прогоны
 experiments/*/work/

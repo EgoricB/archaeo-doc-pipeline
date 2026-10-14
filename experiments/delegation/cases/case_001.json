@@ -1,0 +1,36 @@
+﻿{
+  "case_id": "case_001",
+  "status": "prepared",
+  "task": {
+    "goal": "Извлечь сведения со страницы отчёта. Для каждого поля указать значение и свидетельство. Не восстанавливать отсутствующие сведения догадками.",
+    "report_id": "0001_Р-1_№_2",
+    "page_file": "page_0005",
+    "required_fields": {
+      "topsoil_thickness_m": "Диапазон толщины верхнего почвенного слоя, м",
+      "layer_b_depth_m": "Диапазон глубины залегания слоя Б, м",
+      "clearing_width_m": "Ширина зачистки, м",
+      "mammoth_bones_count": "Число костей мамонта, найденных при описанной зачистке",
+      "bladelets_total_count": "Общее число ножевидных пластин, найденных в указанном слое"
+    }
+  },
+  "inputs": {
+    "ocr_file": "experiments/delegation/cases/case_001_inputs/page_0005.txt",
+    "scan_file": "experiments/delegation/cases/case_001_inputs/page_0005.png"
+  },
+  "constraints": {
+    "source_files_read_only": true,
+    "external_sources_allowed": false,
+    "evidence_required_for_each_claim": true,
+    "unknown_values_allowed": true
+  },
+  "output": {
+    "format": "JSON",
+    "per_field": ["value", "status", "evidence", "reason"],
+    "allowed_statuses": [
+      "supported",
+      "conflicting",
+      "insufficient_evidence"
+    ],
+    "unknown_value": null
+  }
+}
