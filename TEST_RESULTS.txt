@@ -1,0 +1,23 @@
+test_build_and_source_integrity (research_reporting.test_report.ReportingTests.test_build_and_source_integrity) ... ok
+test_cohort_mismatch (research_reporting.test_report.ReportingTests.test_cohort_mismatch) ... ok
+test_conflicting_flag (research_reporting.test_report.ReportingTests.test_conflicting_flag) ... ok
+test_duplicate_comparison (research_reporting.test_report.ReportingTests.test_duplicate_comparison) ... ok
+test_duplicate_variant (research_reporting.test_report.ReportingTests.test_duplicate_variant) ... ok
+test_empty_table (research_reporting.test_report.ReportingTests.test_empty_table) ... ok
+test_fractional_pages (research_reporting.test_report.ReportingTests.test_fractional_pages) ... ok
+test_inconsistent_point (research_reporting.test_report.ReportingTests.test_inconsistent_point) ... ok
+test_invalid_metrics (research_reporting.test_report.ReportingTests.test_invalid_metrics) ... ok
+test_invalid_pair_counts (research_reporting.test_report.ReportingTests.test_invalid_pair_counts) ... ok
+test_load (research_reporting.test_report.ReportingTests.test_load) ... ok
+test_missing_columns (research_reporting.test_report.ReportingTests.test_missing_columns) ... ok
+test_missing_planned_comparison (research_reporting.test_report.ReportingTests.test_missing_planned_comparison) ... ok
+test_page_mismatch (research_reporting.test_report.ReportingTests.test_page_mismatch) ... ok
+test_reversed_interval (research_reporting.test_report.ReportingTests.test_reversed_interval) ... ok
+test_source_overlap_refused (research_reporting.test_report.ReportingTests.test_source_overlap_refused) ... ok
+test_subtraction_used_for_effect (research_reporting.test_report.ReportingTests.test_subtraction_used_for_effect) ... ok
+test_unsupported_operand (research_reporting.test_report.ReportingTests.test_unsupported_operand) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.017s
+
+OK

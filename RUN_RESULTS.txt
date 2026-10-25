@@ -1,0 +1,13 @@
+{
+  "cohort": "ocr_tuning@b3768a7:saved-50-pages",
+  "variants": 9,
+  "pages_per_variant": [
+    50
+  ],
+  "saved_comparisons": 21,
+  "intervals": "Imported; not recomputed",
+  "inputs": {
+    "summary.csv": "96c92c3b6044a168d9496f857fe86714fcdcdb1fb3b893161d77b9e9eceba874",
+    "significance.csv": "f86140fa80053dc214a96ce5319d1a89d5eadeff56edfce36a71c17100306573"
+  }
+}

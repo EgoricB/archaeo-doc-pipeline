@@ -1,38 +1,11 @@
-# Окружение и служебные файлы
-.venv/
 __pycache__/
-*.pyc
-.idea/
-.vscode/
-.env
+*.py[cod]
 
-# Внешние программы (ставятся отдельно, см. README)
-tools/
-
-# Исходные отчёты ИА РАН (скачиваются скриптом download_from_list.py)
-input_reports/
-*.pdf
-
-# Результаты обработки: изображения страниц и OCR-тексты
-results/
-pages/
-processed_pages/
-ocr_text/
-ocr_reports/
-*.png
-*.jpg
-
-# Промежуточные таблицы (пересоздаются скриптами)
-*.csv
-!dar-site/data/*.csv
-!experiments/*/*.csv
-!ground_truth/*.csv
-
-# Эксперименты: промежуточные файлы (картинки, тексты OCR, модели) и повторные прогоны
-experiments/*/work/
-results_*/
-
-# Отладка
-page_debug.html
-*.log
-!reports_catalog.csv
+# Small reproducible inputs and figures are versioned.
+!data/
+!data/*.csv
+!data/provenance.json
+!derived/
+!derived/*.csv
+!derived/*.svg
+!derived/manifest.json
